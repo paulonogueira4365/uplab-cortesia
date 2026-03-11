@@ -1,28 +1,34 @@
 import { Resend } from 'resend';
 import { NextResponse } from 'next/server';
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+// O segredo está aqui: se a chave não existir, ele usa uma string qualquer só para o build passar
+const resend = new Resend(process.env.RESEND_API_KEY || 're_aguardando_chave');
 
 export async function POST(req: Request) {
   try {
     const { paciente, exame, motivo } = await req.json();
 
+    // Se a chave não estiver configurada na Vercel, avisamos o frontend
+    if (!process.env.RESEND_API_KEY) {
+       return NextResponse.json({ error: "API Key faltando na Vercel" }, { status: 500 });
+    }
+
     const data = await resend.emails.send({
-      from: 'Uplab Sistema <onboarding@resend.dev>', // Depois configuramos seu domínio
-      to: ['seu-email@uplab.com.br'], // E-mail de quem aprova
-      subject: `Nova Solicitação de Cortesia: ${paciente}`,
+      from: 'Uplab Sistema <onboarding@resend.dev>',
+      to: ['SEU_EMAIL_AQUI@gmail.com'], // COLOQUE SEU EMAIL AQUI
+      subject: `CORTESIA: ${paciente}`,
       html: `
-        <h2>Nova Solicitação de Cortesia - Uplab</h2>
+        <h3>Nova Solicitação Uplab</h3>
         <p><strong>Paciente:</strong> ${paciente}</p>
         <p><strong>Exame:</strong> ${exame}</p>
         <p><strong>Motivo:</strong> ${motivo}</p>
-        <hr />
-        <a href="https://seu-projeto.vercel.app/aprovar" style="background: green; color: white; padding: 10px; text-decoration: none; border-radius: 5px;">Aprovar Cortesia</a>
+        <p>---</p>
+        <p>Responda este e-mail para decidir.</p>
       `,
     });
 
     return NextResponse.json(data);
   } catch (error) {
-    return NextResponse.json({ error });
+    return NextResponse.json({ error: "Erro interno" }, { status: 500 });
   }
 }
