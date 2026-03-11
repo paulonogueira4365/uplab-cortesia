@@ -1,34 +1,35 @@
 import { Resend } from 'resend';
 import { NextResponse } from 'next/server';
 
-// O segredo está aqui: se a chave não existir, ele usa uma string qualquer só para o build passar
-const resend = new Resend(process.env.RESEND_API_KEY || 're_aguardando_chave');
-
 export async function POST(req: Request) {
   try {
     const { paciente, exame, motivo } = await req.json();
 
-    // Se a chave não estiver configurada na Vercel, avisamos o frontend
-    if (!process.env.RESEND_API_KEY) {
-       return NextResponse.json({ error: "API Key faltando na Vercel" }, { status: 500 });
+    // Movendo a criação do objeto para DENTRO da função
+    // Isso impede o erro durante o deploy (Build)
+    const apiKey = process.env.RESEND_API_KEY;
+    
+    if (!apiKey) {
+      console.error("ERRO: API Key não configurada na Vercel");
+      return NextResponse.json({ error: "Configuração pendente" }, { status: 500 });
     }
+
+    const resend = new Resend(apiKey);
 
     const data = await resend.emails.send({
       from: 'Uplab Sistema <onboarding@resend.dev>',
-      to: ['SEU_EMAIL_AQUI@gmail.com'], // COLOQUE SEU EMAIL AQUI
-      subject: `CORTESIA: ${paciente}`,
+      to: ['SEU_EMAIL_AQUI@gmail.com'], // Mude para o seu e-mail de teste
+      subject: `Solicitação de Cortesia: ${paciente}`,
       html: `
         <h3>Nova Solicitação Uplab</h3>
         <p><strong>Paciente:</strong> ${paciente}</p>
         <p><strong>Exame:</strong> ${exame}</p>
         <p><strong>Motivo:</strong> ${motivo}</p>
-        <p>---</p>
-        <p>Responda este e-mail para decidir.</p>
       `,
     });
 
     return NextResponse.json(data);
   } catch (error) {
-    return NextResponse.json({ error: "Erro interno" }, { status: 500 });
+    return NextResponse.json({ error: "Erro no servidor" }, { status: 500 });
   }
 }
